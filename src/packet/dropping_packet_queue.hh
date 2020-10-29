@@ -3,7 +3,7 @@
 #ifndef DROPPING_PACKET_QUEUE_HH
 #define DROPPING_PACKET_QUEUE_HH
 
-#include <queue>
+#include <deque>
 #include <cassert>
 
 #include "abstract_packet_queue.hh"
@@ -12,13 +12,11 @@
 class DroppingPacketQueue : public AbstractPacketQueue
 {
 private:
-    int queue_size_in_bytes_ = 0, queue_size_in_packets_ = 0;
-
-    std::queue<QueuedPacket> internal_queue_ {};
-
     virtual const std::string & type( void ) const = 0;
 
 protected:
+    int queue_size_in_bytes_ = 0, queue_size_in_packets_ = 0;
+    std::deque<QueuedPacket> internal_queue_ {};
     const unsigned int packet_limit_;
     const unsigned int byte_limit_;
 

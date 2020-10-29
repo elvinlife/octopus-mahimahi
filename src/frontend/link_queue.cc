@@ -8,6 +8,7 @@
 #include "util.hh"
 #include "ezio.hh"
 #include "abstract_packet_queue.hh"
+#include "packet_header.hh"
 
 using namespace std;
 
@@ -169,6 +170,12 @@ void LinkQueue::read_packet( const string & contents )
 
     unsigned int bytes_before = packet_queue_->size_bytes();
     unsigned int packets_before = packet_queue_->size_packets();
+
+    /*
+    PacketHeader h( contents );
+    if (log_ )
+        *log_ << "enque size:" << contents.size() << "seq: " << h.seq() << " frame_no: " << h.frame_no() << endl;
+        */
 
     packet_queue_->enqueue( QueuedPacket( contents, now ) );
 

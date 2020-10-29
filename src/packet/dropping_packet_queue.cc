@@ -22,7 +22,8 @@ QueuedPacket DroppingPacketQueue::dequeue( void )
     assert( not internal_queue_.empty() );
 
     QueuedPacket ret = std::move( internal_queue_.front() );
-    internal_queue_.pop();
+    //internal_queue_.pop();
+    internal_queue_.pop_front();
 
     queue_size_in_bytes_ -= ret.contents.size();
     queue_size_in_packets_--;
@@ -75,7 +76,7 @@ void DroppingPacketQueue::accept( QueuedPacket && p )
 {
     queue_size_in_bytes_ += p.contents.size();
     queue_size_in_packets_++;
-    internal_queue_.emplace( std::move( p ) );
+    internal_queue_.emplace_back( std::move( p ) );
 }
 
 string DroppingPacketQueue::to_string( void ) const

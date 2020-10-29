@@ -7,6 +7,7 @@
 #include "drop_head_packet_queue.hh"
 #include "codel_packet_queue.hh"
 #include "pie_packet_queue.hh"
+#include "drop_semantic_packet_queue.hh"
 #include "link_queue.hh"
 #include "packetshell.cc"
 
@@ -44,6 +45,8 @@ unique_ptr<AbstractPacketQueue> get_packet_queue( const string & type, const str
         return unique_ptr<AbstractPacketQueue>( new CODELPacketQueue( args ) );
     } else if ( type == "pie" ) {
         return unique_ptr<AbstractPacketQueue>( new PIEPacketQueue( args ) );
+    } else if ( type == "dropsemantic" ) {
+        return unique_ptr<AbstractPacketQueue>( new DropSemanticPacketQueue( args ) );
     } else {
         cerr << "Unknown queue type: " << type << endl;
     }

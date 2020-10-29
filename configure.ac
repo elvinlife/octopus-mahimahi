@@ -12,7 +12,8 @@ AC_CONFIG_MACRO_DIR([m4])
 
 # Add picky CXXFLAGS
 CXX11_FLAGS="-std=c++11 -pthread"
-PICKY_CXXFLAGS="-pedantic -Wall -Wextra -Weffc++ -Werror"
+#PICKY_CXXFLAGS="-pedantic -Wall -Wextra -Weffc++ -Werror"
+PICKY_CXXFLAGS="-pedantic -Wall -Wextra -Werror"
 AC_SUBST([CXX11_FLAGS])
 AC_SUBST([PICKY_CXXFLAGS])
 

@@ -14,6 +14,8 @@ private:
         return type_;
     }
 
+    void drop_stale_pkts();
+
 public:
     using DroppingPacketQueue::DroppingPacketQueue;
 
