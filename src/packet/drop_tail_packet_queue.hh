@@ -12,7 +12,6 @@ using namespace std::chrono;
 class DropTailPacketQueue : public DroppingPacketQueue
 {
 private:
-    FILE* log_fd;
     virtual const std::string & type( void ) const override
     {
         static const std::string type_ { "droptail" };
@@ -23,11 +22,10 @@ public:
     DropTailPacketQueue( const std::string & args )
         : DroppingPacketQueue( args ) 
     {
-        log_fd = fopen( "/home/alvin/Research/octopus/link.log", "w" );
     }
 
-    ~DropTailPacketQueue() {
-        fclose( log_fd );
+    ~DropTailPacketQueue()
+    {
     }
 
     void enqueue( QueuedPacket && p ) override
@@ -35,12 +33,17 @@ public:
         if ( good_with( size_bytes() + p.contents.size(),
                     size_packets() + 1 ) ) {
             uint32_t ts = duration_cast< milliseconds >( system_clock::now().time_since_epoch() ).count();
+            /*
             PacketHeader header (p.contents );
             fprintf( log_fd, "enqueue, ts: %u seq: %u frame_no: %u queue_size: %u\n",
                     ts,
                     header.seq(),
                     header.frame_no(),
                     size_packets());
+                    */
+            if ( log_fd_ )
+                fprintf( log_fd_, "enqueue, ts: %u pkt_size: %ld queue_size: %u\n",
+                        ts, p.contents.size(), size_bytes() );
             accept( std::move( p ) );
         }
 

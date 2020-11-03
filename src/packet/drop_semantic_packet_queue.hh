@@ -20,11 +20,10 @@ public:
     DropSemanticPacketQueue( const std::string & args )
         : DroppingPacketQueue( args )
     {
-        log_fd = fopen( "/home/alvin/Research/octopus/link.log", "w" );
     }
 
-    ~DropSemanticPacketQueue() {
-        fclose( log_fd );
+    ~DropSemanticPacketQueue()
+    {
     }
 
     void enqueue( QueuedPacket && p) override;

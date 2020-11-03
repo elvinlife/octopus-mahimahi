@@ -10,12 +10,17 @@ void DropSemanticPacketQueue::enqueue( QueuedPacket && p) {
     if ( good_with( size_bytes() + p.contents.size(),
                 size_packets() + 1 ) ) {
         uint32_t ts = duration_cast< milliseconds >( system_clock::now().time_since_epoch() ).count();
-        PacketHeader header (p.contents );
-        fprintf( log_fd, "enqueue, ts: %u seq: %u frame_no: %u queue_size: %u\n",
-                ts,
-                header.seq(),
-                header.frame_no(),
-                size_packets());
+        /*
+           PacketHeader header (p.contents );
+           fprintf( log_fd_, "enqueue, ts: %u seq: %u frame_no: %u queue_size: %u\n",
+           ts,
+           header.seq(),
+           header.frame_no(),
+           size_packets());
+           */
+        if ( log_fd_ )
+            fprintf( log_fd_, "enqueue, ts: %u pkt_size: %ld queue_size: %u\n",
+                    ts, p.contents.size(), size_bytes() );
         accept( std::move( p ) );
     }
 
@@ -64,9 +69,9 @@ void DropSemanticPacketQueue::drop_stale_pkts ( void ) {
     }
 
     for ( auto it = frame_counter.cbegin(); it != frame_counter.cend(); ++it ) {
-        fprintf( log_fd, "drop frame, frame_no: %u\n", it->first );
+        fprintf( log_fd_, "drop frame, frame_no: %u\n", it->first );
     }
-    fflush( log_fd );
+    fflush( log_fd_ );
 
     for ( auto it = internal_queue_.cbegin(); it != internal_queue_.cend(); ) {
         PacketHeader header( it->contents );

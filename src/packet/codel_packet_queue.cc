@@ -1,23 +1,30 @@
 #include <math.h>
 #include "codel_packet_queue.hh"
 #include "timestamp.hh"
-
+#include "ezio.hh"
 
 using namespace std;
 
 CODELPacketQueue::CODELPacketQueue( const string & args )
   : DroppingPacketQueue(args),
-    target_ ( get_arg( args, "target") ),
-    interval_ ( get_arg( args, "interval") ),
+    target_ ( 0 ),
+    interval_ ( 0 ),
     first_above_time_ ( 0 ),
     drop_next_( 0 ),
     count_ ( 0 ),
     lastcount_ ( 0 ),
     dropping_ ( 0 )
 {
-  if ( target_ == 0 || interval_ == 0 ) {
-    throw runtime_error( "CoDel queue must have target and interval arguments." );
-  }
+    string argv = "";
+    argv = get_arg( args, "target");
+    if (argv != "")
+        target_ = myatoi( argv );
+    argv = get_arg( args, "interval");
+    if (argv != "")
+        interval_ = myatoi( argv );
+    if ( target_ == 0 || interval_ == 0 ) {
+        throw runtime_error( "CoDel queue must have target and interval arguments." );
+    }
 }
 
 //NOTE: CoDel makes drop decisions at dequeueing. 

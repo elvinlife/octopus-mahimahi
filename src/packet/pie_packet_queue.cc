@@ -3,6 +3,7 @@
 
 #include "pie_packet_queue.hh"
 #include "timestamp.hh"
+#include "ezio.hh"
 
 using namespace std;
 
@@ -10,8 +11,8 @@ using namespace std;
 
 PIEPacketQueue::PIEPacketQueue( const string & args )
   : DroppingPacketQueue(args),
-    qdelay_ref_ ( get_arg( args, "qdelay_ref" ) ),
-    max_burst_ ( get_arg( args, "max_burst" ) ),
+    qdelay_ref_ ( 0 ),
+    max_burst_ ( 0 ),
     alpha_ ( 0.125 ),
     beta_ ( 1.25 ),
     t_update_ ( 30 ),
@@ -27,9 +28,17 @@ PIEPacketQueue::PIEPacketQueue( const string & args )
     prng_( random_device()() ),
     last_update_( timestamp() )
 {
-  if ( qdelay_ref_ == 0 || max_burst_ == 0 ) {
-    throw runtime_error( "PIE AQM queue must have qdelay_ref and max_burst parameters" );
-  }
+    string argv = "";
+    argv = get_arg( args, "qdelay_ref" );
+    if (argv != "")
+        qdelay_ref_ = myatoi( argv );
+    argv = get_arg( args, "max_burst" );
+    if (argv != "")
+        max_burst_ = myatoi( argv );
+
+    if ( qdelay_ref_ == 0 || max_burst_ == 0 ) {
+        throw runtime_error( "PIE AQM queue must have qdelay_ref and max_burst parameters" );
+    }
 }
 
 void PIEPacketQueue::enqueue( QueuedPacket && p )

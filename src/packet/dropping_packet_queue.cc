@@ -9,12 +9,24 @@
 using namespace std;
 
 DroppingPacketQueue::DroppingPacketQueue( const string & args )
-    : packet_limit_( get_arg( args, "packets" ) ),
-      byte_limit_( get_arg( args, "bytes" ) )
+    : packet_limit_( 0 ),
+      byte_limit_( 0 ),
+      log_fd_( NULL )
 {
+    string argv = "";
+    argv = get_arg( args, "packets" );
+    if ( argv != "" )
+        packet_limit_ = myatoi( argv );
+    argv = get_arg( args, "bytes" );
+    if ( argv != "" )
+        byte_limit_ = myatoi( argv );
+
     if ( packet_limit_ == 0 and byte_limit_ == 0 ) {
         throw runtime_error( "Dropping queue must have a byte or packet limit." );
     }
+    argv = get_arg( args, "log_file" );
+    if ( argv.size() > 0 )
+        log_fd_ = fopen( argv.c_str(), "w" ); 
 }
 
 QueuedPacket DroppingPacketQueue::dequeue( void )
@@ -100,11 +112,11 @@ string DroppingPacketQueue::to_string( void ) const
     return ret;
 }
 
-unsigned int DroppingPacketQueue::get_arg( const string & args, const string & name )
+string DroppingPacketQueue::get_arg( const string & args, const string & name )
 {
     auto offset = args.find( name );
     if ( offset == string::npos ) {
-        return 0; /* default value */
+        return ""; /* default value */
     } else {
         /* extract the value */
 
@@ -120,7 +132,8 @@ unsigned int DroppingPacketQueue::get_arg( const string & args, const string & n
         offset++;
 
         /* find the first non-digit character */
-        auto offset2 = args.substr( offset ).find_first_not_of( "0123456789" );
+        //auto offset2 = args.substr( offset ).find_first_not_of( "0123456789" );
+        auto offset2 = args.substr( offset ).find_first_of( "," );
 
         auto digit_string = args.substr( offset ).substr( 0, offset2 );
 
@@ -128,6 +141,7 @@ unsigned int DroppingPacketQueue::get_arg( const string & args, const string & n
             throw runtime_error( "could not parse queue arguments: " + args );
         }
 
-        return myatoi( digit_string );
+        return digit_string;
+        //return myatoi( digit_string );
     }
 }
