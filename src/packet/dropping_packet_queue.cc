@@ -5,6 +5,7 @@
 #include "dropping_packet_queue.hh"
 #include "exception.hh"
 #include "ezio.hh"
+#include "timestamp.hh"
 #include <chrono>
 using namespace std::chrono;
 
@@ -39,10 +40,13 @@ QueuedPacket DroppingPacketQueue::dequeue( void )
     //internal_queue_.pop();
     internal_queue_.pop_front();
 
-    uint32_t ts = duration_cast< milliseconds >( system_clock::now().time_since_epoch() ).count();
+    //uint32_t ts = duration_cast< milliseconds >( system_clock::now().time_since_epoch() ).count();
+    uint64_t ts = timestamp();
     if ( log_fd_ )
-        fprintf( log_fd_, "dequeue, ts: %u pkt_size: %ld queue_size: %u\n",
-                ts, ret.contents.size(), size_bytes() );
+        fprintf( log_fd_, "dequeue, ts: %ld pkt_size: %ld queue_size: %u queued_time: %ld\n",
+                ts, ret.contents.size(), size_bytes(),
+                ts - ret.arrival_time
+                );
 
     queue_size_in_bytes_ -= ret.contents.size();
     queue_size_in_packets_--;

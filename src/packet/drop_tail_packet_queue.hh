@@ -5,6 +5,7 @@
 
 #include "dropping_packet_queue.hh"
 #include "packet_header.hh"
+#include "timestamp.hh"
 #include <chrono>
 
 using namespace std::chrono;
@@ -32,18 +33,18 @@ public:
     {
         if ( good_with( size_bytes() + p.contents.size(),
                     size_packets() + 1 ) ) {
-            uint32_t ts = duration_cast< milliseconds >( system_clock::now().time_since_epoch() ).count();
             /*
             PacketHeader header (p.contents );
+            uint32_t ts = duration_cast< milliseconds >( system_clock::now().time_since_epoch() ).count();
             fprintf( log_fd, "enqueue, ts: %u seq: %u frame_no: %u queue_size: %u\n",
                     ts,
                     header.seq(),
                     header.frame_no(),
                     size_packets());
-                    */
             if ( log_fd_ )
                 fprintf( log_fd_, "enqueue, ts: %u pkt_size: %ld queue_size: %u\n",
                         ts, p.contents.size(), size_bytes() );
+                        */
             accept( std::move( p ) );
         }
 
