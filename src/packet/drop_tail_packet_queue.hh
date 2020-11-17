@@ -31,21 +31,26 @@ public:
 
     void enqueue( QueuedPacket && p ) override
     {
+        uint64_t ts = timestamp();
         if ( good_with( size_bytes() + p.contents.size(),
                     size_packets() + 1 ) ) {
             /*
             PacketHeader header (p.contents );
-            uint32_t ts = duration_cast< milliseconds >( system_clock::now().time_since_epoch() ).count();
             fprintf( log_fd, "enqueue, ts: %u seq: %u frame_no: %u queue_size: %u\n",
                     ts,
                     header.seq(),
                     header.frame_no(),
                     size_packets());
+                    */
             if ( log_fd_ )
-                fprintf( log_fd_, "enqueue, ts: %u pkt_size: %ld queue_size: %u\n",
+                fprintf( log_fd_, "enqueue, ts: %ld pkt_size: %ld queue_size: %u\n",
                         ts, p.contents.size(), size_bytes() );
-                        */
             accept( std::move( p ) );
+        }
+        else {
+            if ( log_fd_ )
+                fprintf( log_fd_, "drop, ts: %ld pkt_size: %ld queue_size: %u\n",
+                        ts, p.contents.size(), size_bytes() );
         }
 
         assert( good() );
