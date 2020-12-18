@@ -20,6 +20,7 @@ private:
 
     unsigned int next_delivery_;
     std::vector<uint64_t> schedule_;
+    std::vector<uint64_t> bitrate_;
     uint64_t base_timestamp_;
 
     std::unique_ptr<AbstractPacketQueue> packet_queue_;

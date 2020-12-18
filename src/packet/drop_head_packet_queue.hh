@@ -19,7 +19,7 @@ private:
 public:
     using DroppingPacketQueue::DroppingPacketQueue;
 
-    void enqueue( QueuedPacket && p ) override
+    void enqueue( QueuedPacket && p, int ) override
     {
         /* always accept the packet */
         accept( std::move( p ) );

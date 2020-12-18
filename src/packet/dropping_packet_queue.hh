@@ -36,7 +36,7 @@ public:
             fclose(log_fd_);
     }
 
-    virtual void enqueue( QueuedPacket && p ) = 0;
+    virtual void enqueue( QueuedPacket && p, int ) = 0;
 
     QueuedPacket dequeue( void ) override;
 

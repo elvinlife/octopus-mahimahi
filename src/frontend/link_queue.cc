@@ -56,6 +56,30 @@ LinkQueue::LinkQueue( const string & link_name, const string & filename, const s
         schedule_.emplace_back( ms );
     }
 
+    uint64_t interval = 50; // 50ms
+    int anchor = 0;
+    for (int i = 0; i < (int)schedule_.size(); i++) {
+        if (schedule_[i] < interval) {
+            bitrate_.push_back(0);
+            anchor = i;
+        }
+        else {
+            int j = i;
+            int num_pkts = 0;
+            while ( j >= 0 && (schedule_[j] > schedule_[i] - interval) ) {
+                num_pkts += 1;
+                j--;
+            }
+            bitrate_.push_back( PACKET_SIZE * num_pkts * 8 / interval);
+        }
+    }
+
+    for (int i = 0; i <= anchor; ++i) {
+        bitrate_[i] = bitrate_[anchor + 1];
+    }
+
+    assert( bitrate_.size() == schedule_.size() );
+
     if ( schedule_.empty() ) {
         throw runtime_error( filename + ": no valid timestamps found" );
     }
@@ -171,7 +195,7 @@ void LinkQueue::read_packet( const string & contents )
     unsigned int bytes_before = packet_queue_->size_bytes();
     unsigned int packets_before = packet_queue_->size_packets();
 
-    packet_queue_->enqueue( QueuedPacket( contents, now ) );
+    packet_queue_->enqueue( QueuedPacket( contents, now ), (int)bitrate_.at( next_delivery_ ) );
 
     assert( packet_queue_->size_packets() <= packets_before + 1 );
     assert( packet_queue_->size_bytes() <= bytes_before + contents.size() );

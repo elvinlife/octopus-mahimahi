@@ -47,7 +47,7 @@ private:
 public:
     CODELPacketQueue( const std::string & args );
 
-    void enqueue( QueuedPacket && p ) override;
+    void enqueue( QueuedPacket && p, int ) override;
 
     QueuedPacket dequeue( void ) override;
 };

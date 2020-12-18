@@ -29,7 +29,7 @@ public:
     {
     }
 
-    void enqueue( QueuedPacket && p ) override
+    void enqueue( QueuedPacket && p, int ) override
     {
         uint64_t ts = timestamp();
         if ( good_with( size_bytes() + p.contents.size(),

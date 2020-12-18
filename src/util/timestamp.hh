@@ -7,5 +7,7 @@
 
 uint64_t timestamp( void );
 uint64_t initial_timestamp( void );
+uint64_t microtimestamp( void );
+uint64_t initial_microtimestamp( void );
 
 #endif /* TIMESTAMP_HH */
