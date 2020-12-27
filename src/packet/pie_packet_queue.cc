@@ -41,7 +41,7 @@ PIEPacketQueue::PIEPacketQueue( const string & args )
     }
 }
 
-void PIEPacketQueue::enqueue( QueuedPacket && p, int )
+void PIEPacketQueue::enqueue( QueuedPacket && p, uint32_t )
 {
   calculate_drop_prob();
 

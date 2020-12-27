@@ -3,7 +3,9 @@
 #ifndef LINK_QUEUE_HH
 #define LINK_QUEUE_HH
 
+#include <deque>
 #include <queue>
+#include <utility>
 #include <cstdint>
 #include <string>
 #include <fstream>
@@ -20,7 +22,7 @@ private:
 
     unsigned int next_delivery_;
     std::vector<uint64_t> schedule_;
-    std::vector<uint64_t> bitrate_;
+
     uint64_t base_timestamp_;
 
     std::unique_ptr<AbstractPacketQueue> packet_queue_;
@@ -34,6 +36,11 @@ private:
 
     bool repeat_;
     bool finished_;
+
+    std::vector<uint32_t> bitrate_;
+    std::deque<std::pair<uint64_t, int>> dequeue_trace_;
+    int         empty_times_;
+    uint32_t    dequeue_rate_;
 
     uint64_t next_delivery_time( void ) const;
 

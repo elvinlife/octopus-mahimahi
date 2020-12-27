@@ -15,7 +15,6 @@ private:
         return type_;
     }
 
-    void drop_stale_pkts( void );
     void drop_stale_pkts_svc( uint32_t, uint32_t );
     void drop_on_dequeue_rate( void );
 
@@ -34,7 +33,7 @@ public:
     {
     }
 
-    void enqueue( QueuedPacket && p, int bandwidth) override;
+    void enqueue( QueuedPacket && p, uint32_t bandwidth) override;
     QueuedPacket dequeue( void ) override;
 };
 

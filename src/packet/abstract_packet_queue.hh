@@ -10,7 +10,7 @@
 class AbstractPacketQueue
 {
 public:
-    virtual void enqueue( QueuedPacket && p, int rate_kbps) = 0;
+    virtual void enqueue( QueuedPacket && p, uint32_t rate_kbps) = 0;
 
     virtual QueuedPacket dequeue( void ) = 0;
 

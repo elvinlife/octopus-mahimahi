@@ -24,7 +24,7 @@ public:
         }
     }
 
-    void enqueue( QueuedPacket && p, int ) override
+    void enqueue( QueuedPacket && p, uint32_t ) override
     {
         queue_size_in_bytes_ += p.contents.size();
         queue_size_in_packets_++;

@@ -54,7 +54,7 @@ private:
 public:
     PIEPacketQueue( const std::string & args );
 
-    void enqueue( QueuedPacket && p, int ) override;
+    void enqueue( QueuedPacket && p, uint32_t ) override;
 
     QueuedPacket dequeue( void ) override;
 };

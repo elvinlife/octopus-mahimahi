@@ -101,7 +101,7 @@ QueuedPacket CODELPacketQueue::dequeue( void )
 }
 
 
-void CODELPacketQueue::enqueue( QueuedPacket && p, int )
+void CODELPacketQueue::enqueue( QueuedPacket && p, uint32_t )
 {
   if ( good_with( size_bytes() + p.contents.size(),
 		  size_packets() + 1 ) ) {

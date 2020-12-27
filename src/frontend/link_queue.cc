@@ -27,7 +27,9 @@ LinkQueue::LinkQueue( const string & link_name, const string & filename, const s
       throughput_graph_( nullptr ),
       delay_graph_( nullptr ),
       repeat_( repeat ),
-      finished_( false )
+      finished_( false ),
+      empty_times_( 0 ),
+      dequeue_rate_(0xffffffff)
 {
     assert_not_root();
 
@@ -195,7 +197,8 @@ void LinkQueue::read_packet( const string & contents )
     unsigned int bytes_before = packet_queue_->size_bytes();
     unsigned int packets_before = packet_queue_->size_packets();
 
-    packet_queue_->enqueue( QueuedPacket( contents, now ), (int)bitrate_.at( next_delivery_ ) );
+    //packet_queue_->enqueue( QueuedPacket( contents, now ), bitrate_.at( next_delivery_ ) );
+    packet_queue_->enqueue( QueuedPacket( contents, now ), dequeue_rate_ );
 
     assert( packet_queue_->size_packets() <= packets_before + 1 );
     assert( packet_queue_->size_bytes() <= bytes_before + contents.size() );
@@ -247,6 +250,11 @@ void LinkQueue::rationalize( const uint64_t now )
         while ( bytes_left_in_this_delivery > 0 ) {
             if ( not packet_in_transit_bytes_left_ ) {
                 if ( packet_queue_->empty() ) {
+                    empty_times_ ++;
+                    if (empty_times_ > 0) {
+                        dequeue_trace_.clear();
+                        dequeue_rate_ = 0xffffffff;
+                    }
                     break;
                 }
                 packet_in_transit_ = packet_queue_->dequeue();
@@ -268,10 +276,31 @@ void LinkQueue::rationalize( const uint64_t now )
 
             /* has the packet been fully sent? */
             if ( packet_in_transit_bytes_left_ == 0 ) {
+                int interval = 50;
+                int packet_size = packet_in_transit_.contents.size();
                 record_departure( this_delivery_time, packet_in_transit_ );
 
                 /* this packet is ready to go */
                 output_queue_.push( move( packet_in_transit_.contents ) );
+
+                // measure the dequeue rate
+                empty_times_ = 0;
+                if (dequeue_trace_.size() > 0) {
+                    int total_byte = 0;
+                    for (auto it = dequeue_trace_.begin(); it != dequeue_trace_.end(); ++it) {
+                        total_byte += it->second;
+                    }
+                    dequeue_rate_ = total_byte * 8.0 / ( this_delivery_time - dequeue_trace_.front().first );
+                    if ( log_ ) {
+                        *log_ << "dequeue_rate: " << total_byte << \
+                            " begin_ts: " << dequeue_trace_.front().first << \
+                            " end_ts: " << this_delivery_time << endl;
+                    }
+                }
+                dequeue_trace_.push_back( std::pair<uint64_t, int>(this_delivery_time, packet_size ) );
+                while ( !dequeue_trace_.empty() && dequeue_trace_.front().first < (this_delivery_time - interval) ) {
+                    dequeue_trace_.pop_front();
+                }
             }
         }
     }
