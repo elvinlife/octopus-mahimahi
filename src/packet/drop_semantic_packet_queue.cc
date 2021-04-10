@@ -17,22 +17,26 @@ void DropSemanticPacketQueue::enqueue( QueuedPacket && p, uint32_t bandwidth) {
             return;
         }
         if ( log_fd_ )
-            fprintf( log_fd_, "enqueue, ts: %lu seq: %d msg_id: %d wildcard: %x pkt_size: %ld queue_size: %u bandwidth: %u\n",
+            fprintf( log_fd_, "enqueue, ts: %lu seq: %d msg_field: %x wildcard: %x pkt_size: %ld queue_size: %u bandwidth: %u\n",
                     ts, 
                     header.seq(),
-                    header.msg_no(),
+                    header.msg_field(),
                     header.wildcard(),
                     p.contents.size(), 
                     size_bytes(),
                     bandwidth);
-        if ((uint32_t)bandwidth > header.bitrate()) {
+        if ((uint32_t)bandwidth >= header.bitrate()) {
             accept( std::move( p ) );
         }
         else {
-            fprintf( log_fd_, "sema-drop pkt, seq: %d, msg_id: %d, wildcard: %x\n",
-                    header.seq(), header.msg_no(), header.wildcard() );
+            if ( log_fd_ ) {
+                if ( header.pkt_pos() == FIRST || header.pkt_pos() == SOLO ) {
+                    fprintf( log_fd_, "drop_msg msg_no: %d\n", header.msg_no() );
+                }
+                fprintf( log_fd_, "sema-drop pkt, seq: %d, msg_id: %d, wildcard: %x\n", header.seq(), header.msg_no(), header.wildcard() );
+            }
         }
-        if ( header.pkt_pos() == LAST ) {
+        if ( header.pkt_pos() == LAST || header.pkt_pos() == SOLO ) {
             if ( header.is_preempt() )
                 drop_stale_pkts_svc( header.msg_no(), header.priority() );
         }
@@ -123,6 +127,11 @@ void DropSemanticPacketQueue::drop_stale_pkts_svc( uint32_t msg_no, uint32_t pri
             it = frame_counter.erase( it );
         else
             it++;
+    }
+    for ( auto it = frame_counter.cbegin(); it != frame_counter.cend(); it++ ) {
+        if ( log_fd_ ) {
+            fprintf( log_fd_, "msgs-in-queue msg_id: %d\n", it->first );
+        }
     }
     frame_counter.erase( msg_no );
     for ( auto it = internal_queue_.cbegin(); it != internal_queue_.cend(); ) {

@@ -34,17 +34,16 @@ public:
         uint64_t ts = timestamp();
         if ( good_with( size_bytes() + p.contents.size(),
                     size_packets() + 1 ) ) {
-            /*
-            PacketHeader header (p.contents );
-            fprintf( log_fd, "enqueue, ts: %u seq: %u frame_no: %u queue_size: %u\n",
-                    ts,
-                    header.seq(),
-                    header.frame_no(),
-                    size_packets());
-                    */
-            if ( log_fd_ )
-                fprintf( log_fd_, "enqueue, ts: %ld pkt_size: %ld queue_size: %u\n",
-                        ts, p.contents.size(), size_bytes() );
+            if ( log_fd_ ) {
+                uint32_t seq = 0;
+                //memcpy( &seq, p.contents.c_str() + 32, sizeof(seq) ); 
+                fprintf( log_fd_, "enqueue, ts: %lu pkt_size: %ld queue_size: %u seq: %u raw_ts: %lu\n",
+                        ts,
+                        p.contents.size(), 
+                        size_bytes(),
+                        seq,
+                        ts + initial_timestamp() );
+            }
             accept( std::move( p ) );
         }
         else {

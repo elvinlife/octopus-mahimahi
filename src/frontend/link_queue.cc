@@ -18,7 +18,8 @@ LinkQueue::LinkQueue( const string & link_name, const string & filename, const s
                       const string & command_line )
     : next_delivery_( 0 ),
       schedule_(),
-      base_timestamp_( timestamp() ),
+      //base_timestamp_( timestamp() ),
+      base_timestamp_( 0 ),
       packet_queue_( move( packet_queue ) ),
       packet_in_transit_( "", 0 ),
       packet_in_transit_bytes_left_( 0 ),
@@ -58,6 +59,7 @@ LinkQueue::LinkQueue( const string & link_name, const string & filename, const s
         schedule_.emplace_back( ms );
     }
 
+    /*
     uint64_t interval = 50; // 50ms
     int anchor = 0;
     for (int i = 0; i < (int)schedule_.size(); i++) {
@@ -79,7 +81,40 @@ LinkQueue::LinkQueue( const string & link_name, const string & filename, const s
     for (int i = 0; i <= anchor; ++i) {
         bitrate_[i] = bitrate_[anchor + 1];
     }
+    */
 
+    int interval = 50;
+    if ((int)schedule_.back() < interval) {
+        for (int i = 0; i < (int)schedule_.size(); i++) {
+            bitrate_.push_back( PACKET_SIZE * schedule_.size() * 8 / schedule_.back() ); 
+        }
+    }
+    else {
+        for (int i = 0; i < (int)schedule_.size(); i++) {
+            int cycle = schedule_.back();
+            int left = i, right = i, offset;
+            offset = 0;
+            while (schedule_[left] + offset > schedule_[i] - interval/2) {
+                left -= 1;
+                if (left < 0) {
+                    offset = - cycle;
+                    left += schedule_.size(); 
+                }
+            }
+            offset = 0;
+            while (schedule_[right] + offset < schedule_[i] + interval/2) {
+                right += 1;
+                if ( right >= (int)schedule_.size() ) {
+                    offset = cycle;
+                    right -= schedule_.size();
+                }
+            }
+            int num_pkts = (right - left) > 0 ? (right - left) : (right - left + schedule_.size());
+            int interval = (right - left) > 0 ? (schedule_[right] - schedule_[left]) : (schedule_[right] - schedule_[left] + cycle );
+            bitrate_.push_back( PACKET_SIZE * num_pkts * 8 / interval );
+        }
+
+    }
     assert( bitrate_.size() == schedule_.size() );
 
     if ( schedule_.empty() ) {
@@ -169,7 +204,8 @@ void LinkQueue::record_departure( const uint64_t departure_time, const QueuedPac
     /* log the delivery */
     if ( log_ ) {
         *log_ << departure_time << " - " << packet.contents.size()
-              << " " << departure_time - packet.arrival_time << endl;
+              << " delay: " << departure_time - packet.arrival_time 
+              << " queue_size: " << packet_queue_->size_packets() << endl;
     }
 
     /* meter the delivery */
@@ -285,20 +321,34 @@ void LinkQueue::rationalize( const uint64_t now )
 
                 // measure the dequeue rate
                 empty_times_ = 0;
-                if (dequeue_trace_.size() > 0) {
+                if (dequeue_trace_.size() >= 2) {
                     int total_byte = 0;
                     for (auto it = dequeue_trace_.begin(); it != dequeue_trace_.end(); ++it) {
                         total_byte += it->second;
                     }
-                    dequeue_rate_ = total_byte * 8.0 / ( this_delivery_time - dequeue_trace_.front().first );
-                    if ( log_ ) {
-                        *log_ << "dequeue_rate: " << total_byte << \
-                            " begin_ts: " << dequeue_trace_.front().first << \
-                            " end_ts: " << this_delivery_time << endl;
+                    total_byte = total_byte - dequeue_trace_.front().second + packet_size;
+                    if ( this_delivery_time == dequeue_trace_.front().first ) {
+                        dequeue_rate_ = 0xffffffff;
                     }
+                    else {
+                        dequeue_rate_ = total_byte * 8.0 / ( this_delivery_time - dequeue_trace_.front().first );
+                    }
+                    /*
+                    if ( log_ ) {
+                        *log_ << "dequeue_rate: " << dequeue_rate_ << \
+                            " begin_ts: " << dequeue_trace_.front().first << \
+                            " end_ts: " << this_delivery_time << \
+                            " total_bytes: " << total_byte << endl;
+                    }
+                    */
+                }
+                else {
+                    dequeue_rate_ = 0xffffffff;
                 }
                 dequeue_trace_.push_back( std::pair<uint64_t, int>(this_delivery_time, packet_size ) );
-                while ( !dequeue_trace_.empty() && dequeue_trace_.front().first < (this_delivery_time - interval) ) {
+                // consider both the time interval (for high bandwidth) and trace number (for low bandwidth)
+                while ( dequeue_trace_.size() >= 5 && 
+                        dequeue_trace_.front().first < (this_delivery_time - interval) ) {
                     dequeue_trace_.pop_front();
                 }
             }

@@ -7,7 +7,7 @@ using std::string;
 
 enum PktPos { FIRST, LAST, MID, SOLO };
 
-//#define UDT4_PKT 1
+#define UDT4_PKT 1
 
 #ifndef UDT4_PKT
 class PacketHeader {
@@ -15,7 +15,7 @@ class PacketHeader {
 private:
     bool    valid_;
     uint32_t seq_;
-    uint32_t msg_no_;
+    uint32_t msg_field_;
     uint32_t wildcard_;
     uint16_t fragment_no_;
     uint16_t fragments_num_; 
@@ -30,8 +30,8 @@ public:
         const char* bytes_buffer = payload.c_str() + app_header_offset;
         memcpy( &seq_, bytes_buffer, sizeof(seq_) );
         seq_ = le32toh( seq_ );
-        memcpy( &msg_no_, bytes_buffer + 4, sizeof( msg_no_ ) );
-        msg_no_ = le32toh( msg_no_ );
+        memcpy( &msg_field_, bytes_buffer + 4, sizeof( msg_field_ ) );
+        msg_field_ = le32toh( msg_field_ );
         memcpy( &wildcard_, bytes_buffer + 8, sizeof( wildcard_ ) );
         wildcard_ = le32toh( wildcard_ );
         memcpy( &fragment_no_, bytes_buffer + 12, sizeof( fragment_no_ ) );
@@ -41,7 +41,7 @@ public:
     }
 
     uint32_t seq() const { return seq_; }
-    uint32_t msg_no() const { return msg_no_; }
+    uint32_t msg_no() const { return msg_field_; }
     uint32_t wildcard() const { return wildcard_; }
 
     PktPos pkt_pos() const {
@@ -72,7 +72,7 @@ class PacketHeader {
     private:
     bool    valid_;
     uint32_t seq_;
-    uint32_t msg_no_;
+    uint32_t msg_field_;
     uint32_t wildcard_;
 
     uint32_t ip_field_;
@@ -85,24 +85,25 @@ class PacketHeader {
         const char* bytes_buffer = payload.c_str() + app_header_offset;
         memcpy( &seq_, bytes_buffer, sizeof(seq_) );
         seq_ = ntohl( seq_ );
-        memcpy( &msg_no_, bytes_buffer + 4, sizeof( msg_no_ ) );
-        msg_no_ = ntohl( msg_no_ );
+        memcpy( &msg_field_, bytes_buffer + 4, sizeof( msg_field_ ) );
+        msg_field_ = ntohl( msg_field_ );
         memcpy( &wildcard_, bytes_buffer + 8, sizeof( wildcard_ ) );
         wildcard_ = ntohl( wildcard_ );
     }
 
     uint32_t seq() const { return seq_; }
-    uint32_t msg_no() const { return msg_no_ & 0x1fffffff; }
+    uint32_t msg_no() const { return msg_field_ & 0x1fffffff; }
+    uint32_t msg_field() const { return msg_field_; }
     uint32_t wildcard() const { return wildcard_; }
 
     PktPos pkt_pos() const {
-        if (wildcard_ & 0x80000000) {
+        if ( (msg_field_ & 0xc0000000) == 0x80000000 ) {
             return FIRST;
         }
-        else if (wildcard_ & 0x40000000) {
+        else if ( (msg_field_ & 0xc0000000) == 0x40000000 ) {
             return LAST;
         }
-        else if (wildcard_ & 0xc0000000) {
+        else if ( (msg_field_ & 0xc0000000) == 0x00000000 ) {
             return MID;
         }
         else {

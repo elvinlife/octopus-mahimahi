@@ -10,4 +10,6 @@ uint64_t initial_timestamp( void );
 uint64_t microtimestamp( void );
 uint64_t initial_microtimestamp( void );
 
+uint64_t raw_timestamp();
+
 #endif /* TIMESTAMP_HH */
