@@ -8,6 +8,7 @@
 #include "codel_packet_queue.hh"
 #include "pie_packet_queue.hh"
 #include "drop_semantic_packet_queue.hh"
+#include "drop_semantic_sojourn_queue.hh"
 #include "link_queue.hh"
 #include "packetshell.cc"
 
@@ -25,7 +26,7 @@ void usage_error( const string & program_name )
     cerr << "          --uplink-queue=QUEUE_TYPE --downlink-queue=QUEUE_TYPE" << endl;
     cerr << "          --uplink-queue-args=QUEUE_ARGS --downlink-queue-args=QUEUE_ARGS" << endl;
     cerr << endl;
-    cerr << "          QUEUE_TYPE = infinite | droptail | drophead | codel | pie" << endl;
+    cerr << "          QUEUE_TYPE = infinite | droptail | drophead | codel | pie | dropsemantic | dropsojourn" << endl;
     cerr << "          QUEUE_ARGS = \"NAME=NUMBER[, NAME2=NUMBER2, ...]\"" << endl;
     cerr << "              (with NAME = bytes | packets | target | interval | qdelay_ref | max_burst)" << endl;
     cerr << "                  target, interval, qdelay_ref, max_burst are in milli-second" << endl << endl;
@@ -47,6 +48,8 @@ unique_ptr<AbstractPacketQueue> get_packet_queue( const string & type, const str
         return unique_ptr<AbstractPacketQueue>( new PIEPacketQueue( args ) );
     } else if ( type == "dropsemantic" ) {
         return unique_ptr<AbstractPacketQueue>( new DropSemanticPacketQueue( args ) );
+    } else if ( type == "dropsojourn" ) {
+        return unique_ptr<AbstractPacketQueue>( new DropSemanticSojournQueue( args ) );
     } else {
         cerr << "Unknown queue type: " << type << endl;
     }

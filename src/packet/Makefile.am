@@ -10,4 +10,5 @@ libpacket_a_SOURCES = packetshell.hh packetshell.cc queued_packet.hh \
                       pie_packet_queue.cc pie_packet_queue.hh \
                       bindworkaround.hh \
 					  packet_header.hh \
-					  drop_semantic_packet_queue.hh drop_semantic_packet_queue.cc 
+					  drop_semantic_packet_queue.hh drop_semantic_packet_queue.cc  \
+					  drop_semantic_sojourn_queue.hh drop_semantic_sojourn_queue.cc

@@ -32,24 +32,32 @@ public:
     void enqueue( QueuedPacket && p, uint32_t ) override
     {
         uint64_t ts = timestamp();
+        PacketHeader header ( p.contents );
+        if ( log_fd_ ) {
+            if ( header.is_udp() ) {
+                fprintf( log_fd_, "enqueue, UDP ts: %ld pkt_size: %ld queue_size: %u seq: %d\n",
+                        ts, p.contents.size(),
+                        size_bytes(),
+                        header.seq() );
+            }
+            else {
+                fprintf( log_fd_, "enqueue, TCP ts: %ld pkt_size: %ld queue_size: %u\n",
+                        ts, p.contents.size(),
+                        size_bytes() );
+            }
+        }
         if ( good_with( size_bytes() + p.contents.size(),
                     size_packets() + 1 ) ) {
-            if ( log_fd_ ) {
-                uint32_t seq = 0;
-                //memcpy( &seq, p.contents.c_str() + 32, sizeof(seq) ); 
-                fprintf( log_fd_, "enqueue, ts: %lu pkt_size: %ld queue_size: %u seq: %u raw_ts: %lu\n",
-                        ts,
-                        p.contents.size(), 
-                        size_bytes(),
-                        seq,
-                        ts + initial_timestamp() );
-            }
             accept( std::move( p ) );
         }
         else {
             if ( log_fd_ )
-                fprintf( log_fd_, "drop, ts: %ld pkt_size: %ld queue_size: %u\n",
-                        ts, p.contents.size(), size_bytes() );
+                fprintf( log_fd_, "drop, ts: %lu pkt_size: %ld queue_size: %u type: %s\n",
+                        ts,
+                        p.contents.size(),
+                        size_bytes(),
+                        header.is_udp() ? "UDP" : "TCP"
+                        );
         }
 
         assert( good() );

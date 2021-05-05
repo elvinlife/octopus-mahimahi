@@ -44,11 +44,19 @@ QueuedPacket DroppingPacketQueue::dequeue( void )
     uint64_t ts = timestamp();
     if ( log_fd_ ) {
         PacketHeader header (ret.contents );
-        fprintf( log_fd_, "dequeue, seq: %d ts: %ld pkt_size: %ld queue_size: %u queued_time: %ld\n",
-                header.seq(),
-                ts, ret.contents.size(), size_bytes(),
-                ts - ret.arrival_time
-                );
+        if ( header.is_udp() ) {
+            fprintf( log_fd_, "dequeue, UDP ts: %ld pkt_size: %ld queue_size: %u queued_time: %ld seq: %d\n",
+                    ts, ret.contents.size(),
+                    size_bytes(),
+                    ts - ret.arrival_time,
+                    header.seq() );
+        }
+        else {
+            fprintf( log_fd_, "dequeue, TCP ts: %ld pkt_size: %ld queue_size: %u queued_time: %ld\n",
+                    ts, ret.contents.size(),
+                    size_bytes(),
+                    ts - ret.arrival_time );
+        }
     }
 
     queue_size_in_bytes_ -= ret.contents.size();

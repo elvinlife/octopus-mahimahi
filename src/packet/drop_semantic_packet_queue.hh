@@ -16,11 +16,6 @@ private:
     }
 
     void drop_stale_pkts_svc( uint32_t, uint32_t );
-    void drop_on_dequeue_rate( void );
-
-    const uint64_t interval = 50000;
-    std::queue<uint64_t> dequeue_trace;
-    uint32_t dequeue_rate = 0xffffffff;
 
 public:
     //using DroppingPacketQueue::DroppingPacketQueue;
@@ -34,7 +29,6 @@ public:
     }
 
     void enqueue( QueuedPacket && p, uint32_t bandwidth) override;
-    QueuedPacket dequeue( void ) override;
 };
 
 #endif
