@@ -1,12 +1,12 @@
 #include "packet_header.hh"
-#include "drop_semantic_sojourn_queue.hh"
+#include "drop_sojourn_queue.hh"
 #include "timestamp.hh"
 #include <map>
 #include <chrono>
 
 using namespace std::chrono;
 
-void DropSemanticSojournQueue::enqueue( QueuedPacket && p, uint32_t bandwidth ) {
+void DropSemanticSojournQueue::enqueue( QueuedPacket && p ) {
     if ( good_with( size_bytes() + p.contents.size(),
                 size_packets() + 1 ) ) {
         uint64_t ts = timestamp();
@@ -19,7 +19,7 @@ void DropSemanticSojournQueue::enqueue( QueuedPacket && p, uint32_t bandwidth ) 
                         header.seq(),
                         header.msg_field(),
                         header.wildcard(),
-                        bandwidth
+                        bandwidth_
                         );
             }
             else {
@@ -91,11 +91,12 @@ QueuedPacket DropSemanticSojournQueue::dequeue( void ) {
                 sojourn_trace_.pop_front();
             }
             sojourn_trace_.push_back( std::pair<uint64_t, int> (ts, ts - pkt.arrival_time) );
-            fprintf( log_fd_, "dequeue, UDP ts: %ld pkt_size: %ld queue_size: %u queued_time: %ld seq: %d\n",
-                    ts, pkt.contents.size(),
-                    size_bytes(),
-                    ts - pkt.arrival_time,
-                    header.seq() );
+            if ( log_fd_ )
+                fprintf( log_fd_, "dequeue, UDP ts: %ld pkt_size: %ld queue_size: %u queued_time: %ld seq: %d\n",
+                        ts, pkt.contents.size(),
+                        size_bytes(),
+                        ts - pkt.arrival_time,
+                        header.seq() );
             assert( good() );
             return pkt;
         }

@@ -15,7 +15,7 @@ private:
         return type_;
     }
 
-    const int   target_sojourn_ = 1;    // in ms 
+    const int   target_sojourn_ = 10;    // in ms 
     const int   interval_       = 100;
     uint32_t    priority_thresh_    = 2;   // less or equal prioritized pkts are delivered
     uint64_t    last_adjust_ts_     = 0;
@@ -33,7 +33,7 @@ public:
     {
     }
 
-    void enqueue( QueuedPacket && p, uint32_t bandwidth) override;
+    void enqueue( QueuedPacket && p ) override;
     QueuedPacket dequeue( void ) override;
 };
 

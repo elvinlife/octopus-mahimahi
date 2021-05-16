@@ -38,21 +38,20 @@ QueuedPacket DroppingPacketQueue::dequeue( void )
     assert( not internal_queue_.empty() );
 
     QueuedPacket ret = std::move( internal_queue_.front() );
-    //internal_queue_.pop();
     internal_queue_.pop_front();
 
     uint64_t ts = timestamp();
     if ( log_fd_ ) {
         PacketHeader header (ret.contents );
         if ( header.is_udp() ) {
-            fprintf( log_fd_, "dequeue, UDP ts: %ld pkt_size: %ld queue_size: %u queued_time: %ld seq: %d\n",
+            fprintf( log_fd_, "dequeue, UDP ts: %lu pkt_size: %ld queue_size: %u queued_time: %ld seq: %u\n",
                     ts, ret.contents.size(),
                     size_bytes(),
                     ts - ret.arrival_time,
                     header.seq() );
         }
         else {
-            fprintf( log_fd_, "dequeue, TCP ts: %ld pkt_size: %ld queue_size: %u queued_time: %ld\n",
+            fprintf( log_fd_, "dequeue, TCP ts: %lu pkt_size: %ld queue_size: %u queued_time: %ld\n",
                     ts, ret.contents.size(),
                     size_bytes(),
                     ts - ret.arrival_time );

@@ -2,6 +2,8 @@
 #include "codel_packet_queue.hh"
 #include "timestamp.hh"
 #include "ezio.hh"
+#include "dropping_packet_queue.hh"
+#include "packet_header.hh"
 
 using namespace std;
 
@@ -36,7 +38,13 @@ dodequeue_result CODELPacketQueue::dodequeue ( uint64_t now )
   uint64_t sojourn_time;
 
   dodequeue_result r;
-  r.p = std::move( DroppingPacketQueue::dequeue () );
+  //r.p = std::move( DroppingPacketQueue::dequeue () );
+  r.p = std::move( internal_queue_.front() );
+  internal_queue_.pop_front();
+  queue_size_in_bytes_ -= r.p.contents.size();
+  queue_size_in_packets_--;
+  assert( good() );
+  
   r.ok_to_drop = false;
 
   if ( empty() ) {
@@ -68,44 +76,77 @@ uint64_t CODELPacketQueue::control_law ( uint64_t t, uint32_t count )
 
 QueuedPacket CODELPacketQueue::dequeue( void )
 {   
-  const uint64_t now = timestamp();
-  dodequeue_result r = std::move( dodequeue ( now ) );
-  uint32_t delta;
-    
-  if ( dropping_ ) {
-    if ( !r.ok_to_drop ) {
-      dropping_ = false;
-    }
-
-    while ( now >= drop_next_ && dropping_ ) {
-      dodequeue_result r = std::move( dodequeue ( now ) );
-      count_++;
-      if ( ! r.ok_to_drop ) {
-	dropping_ = false;
-      } else {
-	drop_next_ = control_law(drop_next_, count_);
-      }
-    }
-  }
-  else if ( r.ok_to_drop ) {
+    const uint64_t now = timestamp();
     dodequeue_result r = std::move( dodequeue ( now ) );
-    dropping_ = true;
-    delta = count_ - lastcount_;
-    count_ = ( ( delta > 1 ) && ( now - drop_next_ < 16 * interval_ ))? 
-      delta : 1;
-    drop_next_ = control_law ( now, count_ );
-    lastcount_ = count_;
-  }
+    uint32_t delta;
 
-  return r.p;
+    if ( dropping_ ) {
+        if ( !r.ok_to_drop ) {
+            dropping_ = false;
+        }
+
+        while ( now >= drop_next_ && dropping_ ) {
+            dodequeue_result r = std::move( dodequeue ( now ) );
+            count_++;
+            if ( ! r.ok_to_drop ) {
+                dropping_ = false;
+            } else {
+                drop_next_ = control_law(drop_next_, count_);
+            }
+        }
+    }
+    else if ( r.ok_to_drop ) {
+        dodequeue_result r = std::move( dodequeue ( now ) );
+        dropping_ = true;
+        delta = count_ - lastcount_;
+        count_ = ( ( delta > 1 ) && ( now - drop_next_ < 16 * interval_ ))? 
+            delta : 1;
+        drop_next_ = control_law ( now, count_ );
+        lastcount_ = count_;
+    }
+
+    if ( log_fd_ ) {
+        uint64_t ts = timestamp();
+        PacketHeader header (r.p.contents );
+        if ( header.is_udp() ) {
+            fprintf( log_fd_, "dequeue, UDP ts: %ld pkt_size: %ld queue_size: %u queued_time: %ld seq: %d\n",
+                    ts, r.p.contents.size(),
+                    size_bytes(),
+                    ts - r.p.arrival_time,
+                    header.seq() );
+        }
+        else {
+            fprintf( log_fd_, "dequeue, TCP ts: %ld pkt_size: %ld queue_size: %u queued_time: %ld\n",
+                    ts, r.p.contents.size(),
+                    size_bytes(),
+                    ts - r.p.arrival_time );
+        }
+    }
+
+    return r.p;
 }
 
 
-void CODELPacketQueue::enqueue( QueuedPacket && p, uint32_t )
+void CODELPacketQueue::enqueue( QueuedPacket && p )
 {
   if ( good_with( size_bytes() + p.contents.size(),
-		  size_packets() + 1 ) ) {
-    accept( std::move( p ) );
+              size_packets() + 1 ) ) {
+      if ( log_fd_ ) {
+          uint64_t ts = timestamp();
+          PacketHeader header (p.contents);
+          if ( header.is_udp() ) {
+              fprintf( log_fd_, "enqueue, UDP ts: %ld pkt_size: %ld queue_size: %u seq: %d\n",
+                      ts, p.contents.size(),
+                      size_bytes(),
+                      header.seq() );
+          }
+          else {
+              fprintf( log_fd_, "enqueue, TCP ts: %ld pkt_size: %ld queue_size: %u\n",
+                      ts, p.contents.size(),
+                      size_bytes() );
+          }
+      }
+      accept( std::move( p ) );
   }
   assert( good() );
 }

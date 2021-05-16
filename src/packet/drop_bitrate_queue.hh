@@ -1,17 +1,17 @@
-#ifndef DROP_SEMANTIC_PACKET_QUEUE_HH
-#define DROP_SEMANTIC_PACKET_QUEUE_HH
+#ifndef DROP_BITRATE_QUEUE_HH
+#define DROP_BITRATE_QUEUE_HH
 #include "dropping_packet_queue.hh"
 #include <cstdio>
 #include <queue>
 
-class DropSemanticPacketQueue : public DroppingPacketQueue
+class DropBitrateQueue: public DroppingPacketQueue
 {
 private:
     const static unsigned int PACKET_SIZE = 1504; /* default max TUN payload size */
     FILE* log_fd;
     virtual const std::string & type( void ) const override
     {
-        static const std::string type_ { "dropsemantic" };
+        static const std::string type_ { "dropbitrate" };
         return type_;
     }
 
@@ -19,16 +19,16 @@ private:
 
 public:
     //using DroppingPacketQueue::DroppingPacketQueue;
-    DropSemanticPacketQueue( const std::string & args )
+    DropBitrateQueue( const std::string & args )
         : DroppingPacketQueue( args )
     {
     }
 
-    ~DropSemanticPacketQueue()
+    ~DropBitrateQueue()
     {
     }
 
-    void enqueue( QueuedPacket && p, uint32_t bandwidth) override;
+    void enqueue( QueuedPacket && p ) override;
 };
 
 #endif

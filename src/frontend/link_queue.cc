@@ -234,7 +234,9 @@ void LinkQueue::read_packet( const string & contents )
     unsigned int packets_before = packet_queue_->size_packets();
 
     //packet_queue_->enqueue( QueuedPacket( contents, now ), bitrate_.at( next_delivery_ ) );
-    packet_queue_->enqueue( QueuedPacket( contents, now ), dequeue_rate_ );
+    //packet_queue_->set_bandwidth( dequeue_rate_ );
+    //packet_queue_->set_bandwidth( bitrate_.at( next_delivery_ ) );
+    packet_queue_->enqueue( QueuedPacket( contents, now ) );
 
     assert( packet_queue_->size_packets() <= packets_before + 1 );
     assert( packet_queue_->size_bytes() <= bytes_before + contents.size() );
@@ -260,6 +262,7 @@ void LinkQueue::use_a_delivery_opportunity( void )
     record_departure_opportunity();
 
     next_delivery_ = (next_delivery_ + 1) % schedule_.size();
+    packet_queue_->set_bandwidth( bitrate_.at( next_delivery_ ) );
 
     /* wraparound */
     if ( next_delivery_ == 0 ) {
@@ -293,6 +296,7 @@ void LinkQueue::rationalize( const uint64_t now )
                     }
                     break;
                 }
+                //packet_queue_->set_bandwidth( dequeue_rate_ );
                 packet_in_transit_ = packet_queue_->dequeue();
                 packet_in_transit_bytes_left_ = packet_in_transit_.contents.size();
             }

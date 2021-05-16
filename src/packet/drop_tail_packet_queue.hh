@@ -29,7 +29,7 @@ public:
     {
     }
 
-    void enqueue( QueuedPacket && p, uint32_t ) override
+    void enqueue( QueuedPacket && p ) override
     {
         uint64_t ts = timestamp();
         PacketHeader header ( p.contents );

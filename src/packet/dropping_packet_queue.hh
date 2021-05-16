@@ -17,9 +17,10 @@ private:
 protected:
     int queue_size_in_bytes_ = 0, queue_size_in_packets_ = 0;
     std::deque<QueuedPacket> internal_queue_ {};
-    unsigned int packet_limit_;
-    unsigned int byte_limit_;
-    FILE* log_fd_ = NULL;
+    unsigned int    packet_limit_;
+    unsigned int    byte_limit_;
+    FILE*           log_fd_ = NULL;
+    uint32_t        bandwidth_;
 
     /* put a packet on the back of the queue */
     void accept( QueuedPacket && p );
@@ -36,7 +37,7 @@ public:
             fclose(log_fd_);
     }
 
-    virtual void enqueue( QueuedPacket && p, uint32_t ) = 0;
+    virtual void enqueue( QueuedPacket && p ) = 0;
 
     QueuedPacket dequeue( void ) override;
 
@@ -49,6 +50,10 @@ public:
 
     unsigned int size_bytes( void ) const override;
     unsigned int size_packets( void ) const override;
+
+    void    set_bandwidth( uint32_t bandwidth ) {
+        bandwidth_ = bandwidth;
+    }
 };
 
 #endif /* DROPPING_PACKET_QUEUE_HH */ 

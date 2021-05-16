@@ -19,16 +19,14 @@ uint64_t raw_timestamp( void )
 
 uint64_t initial_timestamp( void )
 {
-    //static bool is_initiated = false;
+    static bool is_initiated = false;
     static uint64_t initial_value = raw_timestamp();
-    /*
     if (!is_initiated) {
         std::ofstream tmp_log ( "/tmp/mahimahi_initts.log" );
         tmp_log << initial_value;
         tmp_log.close();
     }
     is_initiated = true;
-    */
     return initial_value;
 }
 
