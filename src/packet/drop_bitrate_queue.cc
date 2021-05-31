@@ -33,7 +33,8 @@ void DropBitrateQueue::enqueue( QueuedPacket && p ) {
             assert( good() );
             return;
         }
-        if ((uint32_t)bandwidth_ >= header.bitrate()) {
+        if ( (uint32_t)bandwidth_ >= header.bitrate() ||
+                internal_queue_.empty() ) {
             accept( std::move( p ) );
         }
         else {

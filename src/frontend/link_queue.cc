@@ -83,16 +83,19 @@ LinkQueue::LinkQueue( const string & link_name, const string & filename, const s
     }
     */
 
-    int interval = 50;
+    int interval = 100;
+    // trace in small timescale
     if ((int)schedule_.back() < interval) {
         for (int i = 0; i < (int)schedule_.size(); i++) {
             bitrate_.push_back( PACKET_SIZE * schedule_.size() * 8 / schedule_.back() ); 
         }
     }
+    // trace in large timescale
     else {
         for (int i = 0; i < (int)schedule_.size(); i++) {
             int cycle = schedule_.back();
-            int left = i, right = i, offset;
+            //int left = i, right = i, offset;
+            int left = i, offset;
             offset = 0;
             while (schedule_[left] + offset > schedule_[i] - interval/2) {
                 left -= 1;
@@ -101,6 +104,10 @@ LinkQueue::LinkQueue( const string & link_name, const string & filename, const s
                     left += schedule_.size(); 
                 }
             }
+            int num_pkts = (i - left) > 0 ? ( i - left ) : ( i - left + schedule_.size() );
+            int interval = (i - left) > 0 ? ( schedule_[i] - schedule_[left] ) : (schedule_[i] - schedule_[left] + cycle );
+            bitrate_.push_back( PACKET_SIZE * num_pkts * 8 / interval );
+            /*
             offset = 0;
             while (schedule_[right] + offset < schedule_[i] + interval/2) {
                 right += 1;
@@ -112,6 +119,7 @@ LinkQueue::LinkQueue( const string & link_name, const string & filename, const s
             int num_pkts = (right - left) > 0 ? (right - left) : (right - left + schedule_.size());
             int interval = (right - left) > 0 ? (schedule_[right] - schedule_[left]) : (schedule_[right] - schedule_[left] + cycle );
             bitrate_.push_back( PACKET_SIZE * num_pkts * 8 / interval );
+            */
         }
 
     }
@@ -262,7 +270,8 @@ void LinkQueue::use_a_delivery_opportunity( void )
     record_departure_opportunity();
 
     next_delivery_ = (next_delivery_ + 1) % schedule_.size();
-    packet_queue_->set_bandwidth( bitrate_.at( next_delivery_ ) );
+    //packet_queue_->set_bandwidth( bitrate_.at( next_delivery_ ) );
+    packet_queue_->set_bandwidth( dequeue_rate_ );
 
     /* wraparound */
     if ( next_delivery_ == 0 ) {
@@ -290,13 +299,10 @@ void LinkQueue::rationalize( const uint64_t now )
             if ( not packet_in_transit_bytes_left_ ) {
                 if ( packet_queue_->empty() ) {
                     empty_times_ ++;
-                    if (empty_times_ > 0) {
-                        dequeue_trace_.clear();
-                        dequeue_rate_ = 0xffffffff;
-                    }
+                    dequeue_trace_.clear();
+                    dequeue_rate_ = 0xffffffff;
                     break;
                 }
-                //packet_queue_->set_bandwidth( dequeue_rate_ );
                 packet_in_transit_ = packet_queue_->dequeue();
                 packet_in_transit_bytes_left_ = packet_in_transit_.contents.size();
             }
@@ -325,7 +331,7 @@ void LinkQueue::rationalize( const uint64_t now )
 
                 // measure the dequeue rate
                 empty_times_ = 0;
-                if (dequeue_trace_.size() >= 2) {
+                if (dequeue_trace_.size() >= 5) {
                     int total_byte = 0;
                     for (auto it = dequeue_trace_.begin(); it != dequeue_trace_.end(); ++it) {
                         total_byte += it->second;
