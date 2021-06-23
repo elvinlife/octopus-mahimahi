@@ -9,9 +9,10 @@ struct QueuedPacket
 {
     uint64_t arrival_time;
     std::string contents;
+    bool    is_drop;
 
     QueuedPacket( const std::string & s_contents, uint64_t s_arrival_time )
-        : arrival_time( s_arrival_time ), contents( s_contents )
+        : arrival_time( s_arrival_time ), contents( s_contents ), is_drop( false )
     {}
 };
 

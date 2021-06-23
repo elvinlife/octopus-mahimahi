@@ -11,37 +11,35 @@ void DropBitrateQueue::enqueue( QueuedPacket && p ) {
                 size_packets() + 1 ) ) {
         uint64_t ts = timestamp();
         PacketHeader header ( p.contents );
-        if ( log_fd_ ) {
-            if ( header.is_udp() ) {
-                fprintf( log_fd_, "enqueue, UDP ts: %lu pkt_size: %ld queue_size: %u seq: %u msg_no: %u bitrate: %u bw: %u\n",
-                        ts, p.contents.size(),
-                        size_bytes(),
-                        header.seq(),
-                        header.msg_no(),
-                        header.bitrate(),
-                        bandwidth_
-                        );
-            }
-            else {
+
+        if ( !header.is_udp() ) {
+            if ( log_fd_ )
                 fprintf( log_fd_, "enqueue, TCP ts: %ld pkt_size: %ld queue_size: %u\n",
                         ts, p.contents.size(),
                         size_bytes() );
-            }
-        }
-        if ( !header.is_udp() ) {
             accept( std::move( p ) );
             assert( good() );
             return;
         }
-        if ( (uint32_t)bandwidth_ >= header.bitrate() ||
-                internal_queue_.empty() ) {
-            accept( std::move( p ) );
+
+        if ( log_fd_ ) {
+            fprintf( log_fd_, "enqueue, UDP ts: %lu pkt_size: %ld queue_size: %u seq: %u msg_no: %u bitrate: %u bw: %u\n",
+                    ts, p.contents.size(),
+                    size_bytes(),
+                    header.seq(),
+                    header.msg_no(),
+                    header.bitrate(),
+                    bandwidth_
+                   );
         }
-        else {
+        if ( ( header.pkt_pos() == FIRST || header.pkt_pos() == SOLO )
+                && (uint32_t)bandwidth_ < header.bitrate()
+                && !internal_queue_.empty() ) {
+            msg_in_drop_ = header.msg_no();
+            fprintf( log_fd_, "drop_msg msg_no: %d\n", header.msg_no() );
+        }
+        if ( header.msg_no() == msg_in_drop_ ) {
             if ( log_fd_ ) {
-                if ( header.pkt_pos() == FIRST || header.pkt_pos() == SOLO ) {
-                    fprintf( log_fd_, "drop_msg msg_no: %d\n", header.msg_no() );
-                }
                 fprintf( log_fd_, "sema-drop, ts: %lu seq: %u msg_no: %u bitrate: %u bw: %u\n", 
                         ts,
                         header.seq(),
@@ -50,6 +48,9 @@ void DropBitrateQueue::enqueue( QueuedPacket && p ) {
                         bandwidth_
                         );
             }
+        }
+        else {
+            accept( std::move( p ) );
         }
         if ( header.pkt_pos() == LAST || header.pkt_pos() == SOLO ) {
             if ( header.is_preempt() )

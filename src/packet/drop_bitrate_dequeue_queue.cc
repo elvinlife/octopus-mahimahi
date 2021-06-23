@@ -1,8 +1,9 @@
 #include "packet_header.hh"
 #include "drop_bitrate_dequeue_queue.hh"
 #include "timestamp.hh"
-#include <map>
 #include <chrono>
+#include <vector>
+#include <exception>
 
 using namespace std::chrono;
 
@@ -10,59 +11,59 @@ void DropBitrateDequeueQueue::enqueue( QueuedPacket && p ) {
     if ( good_with( size_bytes() + p.contents.size(),
                 size_packets() + 1 ) ) {
         uint64_t ts = timestamp();
+        size_t pkt_size = p.contents.size();
         PacketHeader header ( p.contents );
-        if ( log_fd_ ) {
-            if ( header.is_udp() ) {
-                fprintf( log_fd_, "enqueue, UDP ts: %ld pkt_size: %ld queue_size: %u seq: %u msg_no : %u\n",
-                        ts, p.contents.size(),
-                        size_bytes(),
-                        header.seq(),
-                        header.msg_no()
-                        );
-            }
-            else {
-                fprintf( log_fd_, "enqueue, TCP ts: %ld pkt_size: %ld queue_size: %u\n",
-                        ts, p.contents.size(),
-                        size_bytes() );
-            }
-        }
         accept( std::move( p ) );
+        if ( !header.is_udp() ) {
+            if ( log_fd_ )
+                fprintf( log_fd_, "enqueue, TCP ts: %ld pkt_size: %ld queue_size: %u\n",
+                        ts, pkt_size,
+                        size_bytes() );
+            assert( good() );
+            return;
+        }
+        if ( log_fd_ ) {
+            fprintf( log_fd_, "enqueue, UDP ts: %ld pkt_size: %ld queue_size: %u seq: %u msg_no: %u\n",
+                    ts, pkt_size,
+                    size_bytes(),
+                    header.seq(),
+                    header.msg_no()
+                   );
+        }
+        if( header.pkt_pos() == FIRST || header.pkt_pos() == LAST ) {
+            if( frame_counter_.find( header.msg_no() ) == frame_counter_.end() ) 
+                frame_counter_[ header.msg_no() ] = 1;
+            else
+                frame_counter_[ header.msg_no() ] += 1;
+        }
+        else if ( header.pkt_pos() == SOLO ) {
+            assert( frame_counter_.find( header.msg_no() ) == frame_counter_.end() );
+            frame_counter_[ header.msg_no() ] = 2;
+        }
+
+
         if ( header.pkt_pos() == LAST || header.pkt_pos() == SOLO ) {
             if ( header.is_preempt() )
-                drop_stale_pkts_svc( header.msg_no(), header.priority() );
+                drop_stale_pkts_svc( header.msg_no(), header.priority_threshold() );
         }
     }
-    assert( good() );
 }
 
-QueuedPacket DropBitrateDequeueQueue::dequeue( void ) {
-    assert( not internal_queue_.empty() );
+QueuedPacket DropBitrateDequeueQueue::dequeuefront( void ) {
+    // iterate to tag drop_flag of one message
     uint64_t ts = timestamp();
-
     QueuedPacket pkt = std::move( internal_queue_.front() );
     internal_queue_.pop_front();
     queue_size_in_bytes_ -= pkt.contents.size();
     queue_size_in_packets_--;
-
     PacketHeader header( pkt.contents );
-    
-    if ( header.bitrate() <= bandwidth_ ||
-            internal_queue_.empty() 
-            //( ( ts - pkt.arrival_time) < 10 ) 
-            ) {
-        if ( log_fd_ )
-            fprintf( log_fd_, "dequeue, UDP ts: %lu pkt_size: %ld queue_size: %u queued_time: %ld seq: %u bitrate: %u bw: %d\n",
-                    ts, pkt.contents.size(),
-                    size_bytes(),
-                    ts - pkt.arrival_time,
-                    header.seq(),
-                    header.bitrate(),
-                    bandwidth_
-                    );
-        assert( good() );
+    if ( !header.is_udp() )
         return pkt;
-    }
-    else {
+    if ( frame_counter_.find( header.msg_no() ) != frame_counter_.end() &&
+            frame_counter_[header.msg_no()] == 2 &&
+            header.bitrate() > bandwidth_ ) {
+        pkt.is_drop = true;
+        msg_in_drop_ = header.msg_no();
         if ( log_fd_ )
             fprintf( log_fd_, "sema-drop, ts: %lu seq: %u msg_no: %u bitrate: %u bw: %u\n",
                     ts,
@@ -70,51 +71,97 @@ QueuedPacket DropBitrateDequeueQueue::dequeue( void ) {
                     header.msg_no(),
                     header.bitrate(),
                     bandwidth_ );
-        return dequeue();
     }
+    else if ( header.msg_no() == msg_in_drop_ ) {
+        pkt.is_drop = true;
+        if ( log_fd_ )
+            fprintf( log_fd_, "sema-drop, ts: %lu seq: %u msg_no: %u bitrate: %u bw: %u\n",
+                    ts,
+                    header.seq(),
+                    header.msg_no(),
+                    header.bitrate(),
+                    bandwidth_ );
+    }
+
+    if ( header.pkt_pos() == FIRST || header.pkt_pos() == LAST ) {
+        assert ( frame_counter_.find( header.msg_no() ) != frame_counter_.end() );
+        frame_counter_[ header.msg_no() ] -= 1;
+        if ( frame_counter_[ header.msg_no() ] == 0 ) {
+            frame_counter_.erase( header.msg_no() );
+            /*
+            if ( log_fd_ )
+                fprintf( log_fd_, "remove_msg msg_no: %u\n",
+                        header.msg_no() );
+                        */
+        }
+    }
+    else if ( header.pkt_pos() == SOLO ) {
+        assert ( frame_counter_[ header.msg_no() ] == 2 );
+        frame_counter_.erase( header.msg_no() );
+        /*
+        if ( log_fd_ )
+            fprintf( log_fd_, "remove_msg msg_no: %u\n",
+                    header.msg_no() );
+                    */
+    }
+    return pkt; // use std::move later
+}
+
+QueuedPacket DropBitrateDequeueQueue::dequeue( void ) {
+    assert( not internal_queue_.empty() );
+    uint64_t ts = timestamp();
+    QueuedPacket pkt = dequeuefront();
+    while ( !internal_queue_.empty() ) {
+        PacketHeader header( pkt.contents );
+        if ( !header.is_udp() )
+            break;
+        if ( pkt.is_drop ) {
+            pkt = dequeuefront();
+            continue;
+        }
+        break;
+    }
+    PacketHeader header( pkt.contents );
+    if ( log_fd_ && header.is_udp() ) {
+        fprintf( log_fd_, "dequeue, UDP ts: %lu pkt_size: %ld queue_size: %u queued_time: %ld seq: %u msg_no: %u bitrate: %u bw: %d\n",
+                ts, pkt.contents.size(),
+                size_bytes(),
+                ts - pkt.arrival_time,
+                header.seq(),
+                header.msg_no(),
+                header.bitrate(),
+                bandwidth_
+               );
+    }
+    return pkt;
 }
 
 void DropBitrateDequeueQueue::drop_stale_pkts_svc( uint32_t msg_no, uint32_t priority ) {
-    std::map< uint32_t, int > frame_counter;
-    for ( auto it = internal_queue_.cbegin(); it != internal_queue_.cend(); ++it ) {
-        PacketHeader header( it->contents );
-        if( header.pkt_pos() == FIRST || header.pkt_pos() == LAST ) {
-            if( frame_counter.find( header.msg_no() ) == frame_counter.end() ) 
-                frame_counter[ header.msg_no() ] = 1;
-            else
-                frame_counter[ header.msg_no() ] += 1;
-        }
-        else if ( header.pkt_pos() == SOLO ) {
-            frame_counter[ header.msg_no() ] = 2;
-        }
-    }
-    for ( auto it = frame_counter.cbegin(); it != frame_counter.cend(); ) {
-        if( it->second < 2 )
-            it = frame_counter.erase( it );
-        else
-            it++;
-    }
-    for ( auto it = frame_counter.cbegin(); it != frame_counter.cend(); it++ ) {
+    uint64_t ts = timestamp();
+    for ( auto it = frame_counter_.cbegin(); it != frame_counter_.cend(); it++ ) {
         if ( log_fd_ ) {
-            fprintf( log_fd_, "msgs-in-queue msg_id: %d\n", it->first );
-        }
-    }
-    frame_counter.erase( msg_no );
-    for ( auto it = internal_queue_.cbegin(); it != internal_queue_.cend(); ) {
-        PacketHeader header( it->contents );
-        if( frame_counter.find( header.msg_no() ) != frame_counter.end() &&
-                header.priority() >= priority &&
-                header.msg_no() < msg_no &&
-                header.is_udp() ) {
-            queue_size_in_packets_ --;
-            queue_size_in_bytes_ -= it->contents.size();
-            it = internal_queue_.erase( it );
-            if ( log_fd_ ) {
-                fprintf( log_fd_, "sema-drop pkt, seq: %d, msg_id: %d, priority: %d\n",
-                        header.seq(), header.msg_no(), header.priority() );
+            fprintf( log_fd_, "msgs-in-queue msg_id: %d value: %d\n",
+                    it->first, it->second );
+            if ( it->second == 0 ) {
+                fprintf( log_fd_, "error: value shouldn't be 0\n" );
+                //throw std::runtime_error("value shouldn't be 0\n");
             }
         }
-        else
-            it++;
+    }
+    for ( auto it = internal_queue_.begin(); it != internal_queue_.end(); it++) {
+        PacketHeader header( it->contents );
+        if ( header.is_udp() &&
+                header.msg_no() < msg_no &&
+                header.priority() >= priority &&
+                frame_counter_[ header.msg_no() ] == 2 ) {
+            it->is_drop = true;
+            if ( log_fd_ ) {
+                fprintf( log_fd_, "sema-drop, ts: %lu seq: %d, msg_no: %u, priority: %u\n",
+                        ts,
+                        header.seq(),
+                        header.msg_no(),
+                        header.priority() );
+            }
+        }
     }
 }

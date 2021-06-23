@@ -3,6 +3,7 @@
 #include "dropping_packet_queue.hh"
 #include <cstdio>
 #include <queue>
+#include <map>
 
 class DropBitrateDequeueQueue: public DroppingPacketQueue
 {
@@ -16,11 +17,13 @@ private:
     }
 
     void drop_stale_pkts_svc( uint32_t, uint32_t );
+    std::map< uint32_t, int > frame_counter_;
+    uint32_t msg_in_drop_;
 
 public:
     //using DroppingPacketQueue::DroppingPacketQueue;
     DropBitrateDequeueQueue( const std::string & args )
-        : DroppingPacketQueue( args )
+        : DroppingPacketQueue( args ), msg_in_drop_( 0xffffffff )
     {
     }
 
@@ -29,6 +32,7 @@ public:
     }
 
     void enqueue( QueuedPacket && p ) override;
+    QueuedPacket dequeuefront( void );
     QueuedPacket dequeue( void ) override;
 };
 

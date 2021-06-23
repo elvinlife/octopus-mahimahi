@@ -16,11 +16,12 @@ private:
     }
 
     void drop_stale_pkts_svc( uint32_t, uint32_t );
+    uint32_t msg_in_drop_;
 
 public:
     //using DroppingPacketQueue::DroppingPacketQueue;
     DropBitrateQueue( const std::string & args )
-        : DroppingPacketQueue( args )
+        : DroppingPacketQueue( args ), msg_in_drop_( 0xffffffff )
     {
     }
 
