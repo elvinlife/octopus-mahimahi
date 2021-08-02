@@ -35,10 +35,13 @@ public:
         PacketHeader header ( p.contents );
         if ( log_fd_ ) {
             if ( header.is_udp() ) {
-                fprintf( log_fd_, "enqueue, UDP ts: %ld pkt_size: %ld queue_size: %u seq: %d\n",
-                        ts, p.contents.size(),
+                fprintf( log_fd_, "enqueue, UDP ts: %ld pkt_size: %ld queue_size: %u seq: %d msg_no: %d\n",
+                        ts,
+                        p.contents.size(),
                         size_bytes(),
-                        header.seq() );
+                        header.seq(),
+                        header.msg_no()
+                        );
             }
             else {
                 fprintf( log_fd_, "enqueue, TCP ts: %ld pkt_size: %ld queue_size: %u\n",
@@ -51,13 +54,23 @@ public:
             accept( std::move( p ) );
         }
         else {
-            if ( log_fd_ )
-                fprintf( log_fd_, "drop, ts: %lu pkt_size: %ld queue_size: %u type: %s\n",
-                        ts,
-                        p.contents.size(),
-                        size_bytes(),
-                        header.is_udp() ? "UDP" : "TCP"
-                        );
+            if ( log_fd_ ) {
+                if ( header.is_udp() ) {
+                    fprintf( log_fd_, "drop, UDP ts: %lu pkt_size: %ld queue_size: %u seq: %d msg_no: %d\n",
+                            ts,
+                            p.contents.size(),
+                            size_bytes(),
+                            header.seq(), 
+                            header.msg_no()
+                            );
+                }
+                else {
+                    fprintf( log_fd_, "drop, TCP ts: %lu pkt_size: %ld queue_size: %u\n",
+                            ts,
+                            p.contents.size(),
+                            size_bytes() );
+                }
+            }
         }
 
         assert( good() );
