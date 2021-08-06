@@ -61,9 +61,10 @@ public:
 
     uint32_t priority() const { return (wildcard_ & 0xe0000000) >> 29; }
     uint32_t priority_threshold() const { return (wildcard_ & 0x1c000000) >> 26; }
-    uint32_t bitrate() const { return wildcard_ & 0x00ffffff; }
-    bool is_udp() const { return ((ip_field_ >> 16) & 0x000000ff) == 17; }
     bool is_preempt() const { return (wildcard_ & 0x2000000); }
+    uint32_t slack_time() const { return (wildcard_ & 0x01ff0000) >> 16; }
+    uint32_t bitrate() const { return wildcard_ & 0x0000ffff; }
+    bool is_udp() const { return ((ip_field_ >> 16) & 0x000000ff) == 17; }
 };
 #endif
 
@@ -114,9 +115,10 @@ class PacketHeader {
 
     uint32_t priority() const { return (wildcard_ & 0xe0000000) >> 29; }
     uint32_t priority_threshold() const { return (wildcard_ & 0x1c000000) >> 26; }
-    uint32_t bitrate() const { return (wildcard_ & 0x00ffffff); }
-    bool is_udp() const { return ((ip_field_ >> 16) & 0x000000ff) == 17; }
     bool is_preempt() const { return (wildcard_ & 0x2000000); }
+    uint32_t slack_time() const { return (wildcard_ & 0x01ff0000) >> 16; }
+    uint32_t bitrate() const { return wildcard_ & 0x0000ffff; }
+    bool is_udp() const { return ((ip_field_ >> 16) & 0x000000ff) == 17; }
 };
 #endif
 

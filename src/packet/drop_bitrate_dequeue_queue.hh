@@ -19,11 +19,14 @@ private:
     void drop_stale_pkts_svc( uint32_t, uint32_t );
     std::map< uint32_t, int > frame_counter_;
     uint32_t msg_in_drop_;
+    uint32_t dropper_msg_;
+    uint32_t priority_threshold_;
 
 public:
     //using DroppingPacketQueue::DroppingPacketQueue;
     DropBitrateDequeueQueue( const std::string & args )
-        : DroppingPacketQueue( args ), msg_in_drop_( 0xffffffff )
+        : DroppingPacketQueue( args ), msg_in_drop_( 0xffffffff ), \
+          dropper_msg_( 0xffffffff ), priority_threshold_ ( 0xffffffff )
     {
     }
 

@@ -331,7 +331,8 @@ void LinkQueue::rationalize( const uint64_t now )
 
                 // measure the dequeue rate
                 empty_times_ = 0;
-                if (dequeue_trace_.size() >= 5) {
+                size_t min_sample = 5;
+                if (dequeue_trace_.size() >= min_sample - 1) {
                     int total_byte = 0;
                     for (auto it = dequeue_trace_.begin(); it != dequeue_trace_.end(); ++it) {
                         total_byte += it->second;
@@ -357,7 +358,7 @@ void LinkQueue::rationalize( const uint64_t now )
                 }
                 dequeue_trace_.push_back( std::pair<uint64_t, int>(this_delivery_time, packet_size ) );
                 // consider both the time interval (for high bandwidth) and trace number (for low bandwidth)
-                while ( dequeue_trace_.size() >= 5 && 
+                while ( dequeue_trace_.size() >= min_sample && 
                         dequeue_trace_.front().first < (this_delivery_time - interval) ) {
                     dequeue_trace_.pop_front();
                 }
