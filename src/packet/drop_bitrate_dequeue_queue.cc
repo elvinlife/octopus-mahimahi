@@ -23,7 +23,7 @@ void DropBitrateDequeueQueue::enqueue( QueuedPacket && p ) {
             return;
         }
         if ( log_fd_ ) {
-            fprintf( log_fd_, "enqueue, UDP ts: %ld pkt_size: %ld queue_size: %u seq: %u msg_no: %u\n",
+            fprintf( log_fd_, "enqueue, UDP ts: %ld pkt_size: %ld queue_size: %u seq: %u msg_no: %d\n",
                     ts, pkt_size,
                     size_bytes(),
                     header.seq(),
@@ -42,9 +42,11 @@ void DropBitrateDequeueQueue::enqueue( QueuedPacket && p ) {
         }
         if ( header.pkt_pos() == LAST || header.pkt_pos() == SOLO ) {
             if ( header.is_preempt() ) {
-                //drop_stale_pkts_svc( header.msg_no(), header.priority_threshold() );
-                dropper_msg_ = header.msg_no();
-                priority_threshold_ = header.priority_threshold();
+                int32_t dropper = header.msg_no();
+                uint32_t prio_thresh = header.priority_threshold();
+                if ( dropper > prio_to_droppers_[prio_thresh] ) {
+                    prio_to_droppers_[prio_thresh] = dropper;
+                }
             }
         }
     }
@@ -63,10 +65,15 @@ QueuedPacket DropBitrateDequeueQueue::dequeuefront( void ) {
     if ( frame_counter_.find( header.msg_no() ) != frame_counter_.end()
             && frame_counter_[header.msg_no()] == 2 ) {
         int64_t sojourn_time = ts - pkt.arrival_time;
+        int32_t latest_dropper = -1;
+        for ( unsigned int i = 0; i <= header.priority(); ++i ) {
+            if ( prio_to_droppers_[i] > latest_dropper )
+                latest_dropper = prio_to_droppers_[i];
+        }
         if ( header.bitrate() > bandwidth_ && sojourn_time >= header.slack_time() ) {
             pkt.is_drop = true;
             msg_in_drop_ = header.msg_no();
-            fprintf( log_fd_, "sema-drop, ts: %lu seq: %u msg_no: %u bitrate: %u bw: %u slack-time: %u\n",
+            fprintf( log_fd_, "sema-drop, ts: %lu seq: %u msg_no: %d bitrate: %u bw: %u slack-time: %u\n",
                     ts,
                     header.seq(),
                     header.msg_no(),
@@ -75,32 +82,22 @@ QueuedPacket DropBitrateDequeueQueue::dequeuefront( void ) {
                     header.slack_time()
                     );
         }
-        else if ( header.priority() >= priority_threshold_
-                && header.msg_no() < dropper_msg_ 
+        else if ( header.msg_no() < latest_dropper
                 && sojourn_time >= header.slack_time() ) {
             pkt.is_drop = true;
             msg_in_drop_ = header.msg_no();
-            fprintf( log_fd_, "sema-drop, ts: %lu seq: %u msg_no: %u priority: %u prio_thresh: %u slack-time: %u\n",
+            fprintf( log_fd_, "sema-drop, ts: %lu seq: %u msg_no: %d priority: %u dropper: %d slack-time: %u\n",
                     ts,
                     header.seq(),
                     header.msg_no(),
                     header.priority(),
-                    priority_threshold_,
+                    latest_dropper,
                     header.slack_time()
                     );
         }
     }
     else if ( header.msg_no() == msg_in_drop_ ) {
         pkt.is_drop = true;
-        /*
-        if ( log_fd_ )
-            fprintf( log_fd_, "sema-drop, ts: %lu seq: %u msg_no: %u bitrate: %u bw: %u\n",
-                    ts,
-                    header.seq(),
-                    header.msg_no(),
-                    header.bitrate(),
-                    bandwidth_ );
-                    */
     }
 
     if ( header.pkt_pos() == FIRST || header.pkt_pos() == LAST ) {
@@ -157,32 +154,3 @@ QueuedPacket DropBitrateDequeueQueue::dequeue( void ) {
     return pkt;
 }
 
-void DropBitrateDequeueQueue::drop_stale_pkts_svc( uint32_t msg_no, uint32_t priority ) {
-    uint64_t ts = timestamp();
-    for ( auto it = frame_counter_.cbegin(); it != frame_counter_.cend(); it++ ) {
-        if ( log_fd_ ) {
-            fprintf( log_fd_, "msgs-in-queue msg_id: %d value: %d\n",
-                    it->first, it->second );
-            if ( it->second == 0 ) {
-                fprintf( log_fd_, "error: value shouldn't be 0\n" );
-                //throw std::runtime_error("value shouldn't be 0\n");
-            }
-        }
-    }
-    for ( auto it = internal_queue_.begin(); it != internal_queue_.end(); it++) {
-        PacketHeader header( it->contents );
-        if ( header.is_udp() &&
-                header.msg_no() < msg_no &&
-                header.priority() >= priority &&
-                frame_counter_[ header.msg_no() ] == 2 ) {
-            it->is_drop = true;
-            if ( log_fd_ ) {
-                fprintf( log_fd_, "sema-drop, ts: %lu seq: %d, msg_no: %u, priority: %u\n",
-                        ts,
-                        header.seq(),
-                        header.msg_no(),
-                        header.priority() );
-            }
-        }
-    }
-}

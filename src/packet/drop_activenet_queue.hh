@@ -1,41 +1,37 @@
-#ifndef DROP_BITRATE_DEQUEUE_QUEUE_HH
-#define DROP_BITRATE_DEQUEUE_QUEUE_HH
+#ifndef DROP_ACTIVENET_QUEUE_HH
+#define DROP_ACTIVENET_QUEUE_HH
 #include "dropping_packet_queue.hh"
 #include <cstdio>
 #include <queue>
 #include <map>
 
-class DropBitrateDequeueQueue: public DroppingPacketQueue
+class DropActiveNetQueue: public DroppingPacketQueue
 {
 private:
     const static unsigned int PACKET_SIZE = 1504; /* default max TUN payload size */
     FILE* log_fd;
     virtual const std::string & type( void ) const override
     {
-        static const std::string type_ { "dropbitrate_dequeue" };
+        static const std::string type_ { "dropactivenet" };
         return type_;
     }
 
-    std::map< int32_t, int32_t > frame_counter_;
     int32_t msg_in_drop_;
-    int32_t prio_to_droppers_[8];
 
 public:
     //using DroppingPacketQueue::DroppingPacketQueue;
-    DropBitrateDequeueQueue( const std::string & args )
+    DropActiveNetQueue( const std::string & args )
         : DroppingPacketQueue( args ), msg_in_drop_( -1 )
     {
-        for ( int i = 0; i < 8; ++i )
-            prio_to_droppers_[i] = -1;
     }
 
-    ~DropBitrateDequeueQueue()
+    ~DropActiveNetQueue()
     {
     }
 
     void enqueue( QueuedPacket && p ) override;
-    QueuedPacket dequeuefront( void );
     QueuedPacket dequeue( void ) override;
+    int dropStaleFrames( uint32_t, int );
 };
 
 #endif

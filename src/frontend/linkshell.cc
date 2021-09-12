@@ -7,9 +7,8 @@
 #include "drop_head_packet_queue.hh"
 #include "codel_packet_queue.hh"
 #include "pie_packet_queue.hh"
-#include "drop_bitrate_queue.hh"
 #include "drop_bitrate_dequeue_queue.hh"
-#include "drop_sojourn_queue.hh"
+#include "drop_activenet_queue.hh"
 #include "link_queue.hh"
 #include "packetshell.cc"
 
@@ -47,12 +46,10 @@ unique_ptr<AbstractPacketQueue> get_packet_queue( const string & type, const str
         return unique_ptr<AbstractPacketQueue>( new CODELPacketQueue( args ) );
     } else if ( type == "pie" ) {
         return unique_ptr<AbstractPacketQueue>( new PIEPacketQueue( args ) );
-    } else if ( type == "dropbitrate" ) {
-        return unique_ptr<AbstractPacketQueue>( new DropBitrateQueue( args ) );
     } else if ( type == "dropbitrate_dequeue" ) {
         return unique_ptr<AbstractPacketQueue>( new DropBitrateDequeueQueue( args ) );
-    } else if ( type == "dropsojourn" ) {
-        return unique_ptr<AbstractPacketQueue>( new DropSemanticSojournQueue( args ) );
+    } else if ( type == "dropactivenet" ) {
+        return unique_ptr<DropActiveNetQueue> ( new DropActiveNetQueue( args ) );
     } else {
         cerr << "Unknown queue type: " << type << endl;
     }

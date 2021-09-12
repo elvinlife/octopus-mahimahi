@@ -94,7 +94,7 @@ class PacketHeader {
     }
 
     uint32_t seq() const { return seq_; }
-    uint32_t msg_no() const { return msg_field_ & 0x1fffffff; }
+    int32_t msg_no() const { return (int32_t) msg_field_ & 0x1fffffff; }
     uint32_t msg_field() const { return msg_field_; }
     uint32_t wildcard() const { return wildcard_; }
 
