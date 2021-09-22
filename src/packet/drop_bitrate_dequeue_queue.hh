@@ -4,6 +4,9 @@
 #include <cstdio>
 #include <queue>
 #include <map>
+#include <utility>
+
+using Trace = std::pair<uint64_t, int>;
 
 class DropBitrateDequeueQueue: public DroppingPacketQueue
 {
@@ -16,17 +19,19 @@ private:
         return type_;
     }
 
-    std::map< int32_t, int32_t > frame_counter_;
-    int32_t msg_in_drop_;
-    int32_t prio_to_droppers_[8];
+    std::map<uint16_t, std::map< int32_t, int32_t >> frame_counter_;
+    std::map<uint16_t, int32_t>             msg_in_drop_;
+    std::map<uint16_t, int32_t [8]>         prio_to_droppers_;
+    std::map<uint16_t, std::deque<Trace>>   enqueue_trace_;
+    std::map<uint16_t, int>                 enqueue_rate_;
+    //int32_t msg_in_drop_;
+    //int32_t prio_to_droppers_[8];
 
 public:
     //using DroppingPacketQueue::DroppingPacketQueue;
     DropBitrateDequeueQueue( const std::string & args )
-        : DroppingPacketQueue( args ), msg_in_drop_( -1 )
+        : DroppingPacketQueue( args )
     {
-        for ( int i = 0; i < 8; ++i )
-            prio_to_droppers_[i] = -1;
     }
 
     ~DropBitrateDequeueQueue()

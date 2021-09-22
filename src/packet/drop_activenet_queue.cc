@@ -15,11 +15,12 @@ void DropActiveNetQueue::enqueue( QueuedPacket && p ) {
     }
     if ( !good_with( size_bytes() + p.contents.size(),
                 size_packets() + 1 ) )  {
-        if ( header.is_preempt() && header.priority() == 1) {
-            int pkts_drop = dropStaleFrames( 3, header.msg_no() );
-            if ( pkts_drop == 0 )
-                pkts_drop = dropStaleFrames( 2, header.msg_no() );
+        if ( header.priority() == 1 ) {
+            dropStaleFrames( 2, header.msg_no() );
         }
+        //else if ( header.priority() == 2 ) {
+        //    dropStaleFrames( 3, header.msg_no() );
+        //}
     }
     uint64_t ts = timestamp();
     size_t pkt_size = p.contents.size();
@@ -78,16 +79,20 @@ int DropActiveNetQueue::dropStaleFrames(uint32_t to_drop, int dropper_msg) {
     int pkts_dropped = 0;
     for ( auto it = internal_queue_.begin(); it != internal_queue_.end(); ) {
         PacketHeader header( it->contents );
-        if ( header.priority() == to_drop && 
-                header.msg_no() < dropper_msg &&
-                ( header.pkt_pos() == FIRST || header.pkt_pos() == SOLO ) ) {
+        if ( ( header.priority() >= to_drop 
+                && header.msg_no() < dropper_msg ) 
+                && ( header.pkt_pos() == FIRST || header.pkt_pos() == SOLO ) ) {
             msg_in_drop_ = header.msg_no();
+            queue_size_in_bytes_ -= it->contents.size();
+            queue_size_in_packets_ -= 1;
             it = internal_queue_.erase( it );
             pkts_dropped += 1;
             fprintf( log_fd_, "sema-drop: ts: %lu seq: %u msg_no: %d priority: %u\n",
-                    ts, header.seq(), header.msg_no(), to_drop );
+                    ts, header.seq(), header.msg_no(), header.priority() );
         }
         else if ( msg_in_drop_ == header.msg_no() ) {
+            queue_size_in_bytes_ -= it->contents.size();
+            queue_size_in_packets_ -= 1;
             it = internal_queue_.erase( it );
             pkts_dropped += 1;
         }
