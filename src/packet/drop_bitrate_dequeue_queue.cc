@@ -114,27 +114,29 @@ QueuedPacket DropBitrateDequeueQueue::dequeuefront( void ) {
         if ( header.bitrate() > fair_share && sojourn_time >= header.slack_time() ) {
             pkt.is_drop = true;
             msg_in_drop_[dstport] = header.msg_no();
-            fprintf( log_fd_, "sema-drop, ts: %lu seq: %u msg_no: %d bitrate: %u fairshare: %u slack_time: %u\n",
-                    ts,
-                    header.seq(),
-                    header.msg_no(),
-                    header.bitrate(),
-                    fair_share,
-                    header.slack_time()
-                    );
+            if (log_fd_)
+                fprintf( log_fd_, "sema-drop, ts: %lu seq: %u msg_no: %d bitrate: %u fairshare: %u slack_time: %u\n",
+                        ts,
+                        header.seq(),
+                        header.msg_no(),
+                        header.bitrate(),
+                        fair_share,
+                        header.slack_time()
+                       );
         }
         else if ( header.msg_no() < latest_dropper
                 && sojourn_time >= header.slack_time() ) {
             pkt.is_drop = true;
             msg_in_drop_[dstport] = header.msg_no();
-            fprintf( log_fd_, "sema-drop, ts: %lu seq: %u msg_no: %d priority: %u dropper: %d slack_time: %u\n",
-                    ts,
-                    header.seq(),
-                    header.msg_no(),
-                    header.priority(),
-                    latest_dropper,
-                    header.slack_time()
-                    );
+            if (log_fd_)
+                fprintf( log_fd_, "sema-drop, ts: %lu seq: %u msg_no: %d priority: %u dropper: %d slack_time: %u\n",
+                        ts,
+                        header.seq(),
+                        header.msg_no(),
+                        header.priority(),
+                        latest_dropper,
+                        header.slack_time()
+                       );
         }
     }
     else if ( header.msg_no() == msg_in_drop_[dstport] ) {
