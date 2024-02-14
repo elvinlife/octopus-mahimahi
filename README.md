@@ -7,6 +7,9 @@ sudo apt-get install -y protobuf-compiler libprotobuf-dev autotools-dev dh-autor
 ## Configure and build
 
 ./autogen.sh
+
 ./configure
+
 make -j8
+
 sudo make install
